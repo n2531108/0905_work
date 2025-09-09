@@ -62,7 +62,7 @@ sort_flag = True
 
 ### Query set
 
-query_idx = np.arange(1000)
+query_idx = np.arange(min(50, len(test.queries)))
 qn = len(query_idx)
 queries = test.queries[query_idx]
 queries_modified = [test.queries_modified[i] for i in query_idx]
