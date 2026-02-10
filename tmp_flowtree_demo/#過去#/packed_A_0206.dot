@@ -1,0 +1,50 @@
+digraph PackedOnce {
+  graph [rankdir=TB, splines=true, nodesep=0.25, ranksep=0.35];
+  node  [shape=box, fontsize=10];
+  edge  [arrowsize=0.6];
+
+  n0 [label="v47\n(id=0)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n1 [label="#1", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n2 [label="#2", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n3 [label="#3", shape=doubleoctagon, style="filled", fillcolor="gold", fontcolor="black"];
+  n4 [label="v83\n(id=4)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n5 [label="#5", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n6 [label="v49\n(id=6)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n7 [label="#7", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n8 [label="#8", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n9 [label="v38\n(id=9)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n10 [label="v18\n(id=10)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n11 [label="#11", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n12 [label="#12", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n13 [label="v10\n(id=13)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n14 [label="#14", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n15 [label="v0\n(id=15)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n16 [label="v86\n(id=16)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n17 [label="v67\n(id=17)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n18 [label="#18", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n19 [label="v42\n(id=19)", shape=ellipse, style="filled", fillcolor="lightblue", fontcolor="darkblue"];
+  n20 [label="#20", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+  n21 [label="#21", shape=box, style="filled", fillcolor="gray95", fontcolor="black"];
+
+  n1 -> n0;
+  n2 -> n1;
+  n3 -> n2;
+  n3 -> n5;
+  n3 -> n8;
+  n3 -> n12;
+  n3 -> n18;
+  n3 -> n21;
+  n5 -> n4;
+  n5 -> n9;
+  n5 -> n14;
+  n5 -> n16;
+  n7 -> n6;
+  n8 -> n7;
+  n11 -> n10;
+  n12 -> n11;
+  n12 -> n15;
+  n14 -> n13;
+  n18 -> n17;
+  n20 -> n19;
+  n21 -> n20;
+}

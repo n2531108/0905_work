@@ -2,3 +2,7 @@
 .venv/
 python/.venv/
 data/
+
+# ignore specific tmp folders
+tmp_flowtree_demo/adj_parts_A/
+tmp_flowtree_demo/adj_parts_B/

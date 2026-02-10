@@ -1,0 +1,14 @@
+=== From Adj dump: /mnt/c/Users/成見/0905_work/tmp_flowtree_demo/adj_parts_B/adj_035.txt ===
+
+max_depth(H)=3, #leaves=11
+葉(左→右): name, id, x, depth
+ v47  (id= 0)  x=  0  depth=1
+ v83  (id= 2)  x=  2  depth=2
+ v94  (id=12)  x=  3  depth=2
+ v49  (id= 4)  x= 14  depth=3
+ v38  (id= 7)  x= 17  depth=3
+ v65  (id=11)  x= 18  depth=3
+ v84  (id=16)  x= 19  depth=3
+ v18  (id= 9)  x= 22  depth=3
+ v37  (id=13)  x= 23  depth=3
+ v52  (id=15)  x= 24  depth=2
