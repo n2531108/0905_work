@@ -9,3 +9,4 @@ add_subdirectory(external/pybind11)
 include_directories(external/eigen)
 
 pybind11_add_module(ot_estimators src/ot_estimators.cpp)
+pybind11_add_module(ot_estimators_twotree src/ot_estimators_twotree.cpp)

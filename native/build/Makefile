@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/narumi/work/ot_estimators/native
+CMAKE_SOURCE_DIR = /mnt/c/Users/成見/0905_work/native
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/narumi/work/ot_estimators/native/build
+CMAKE_BINARY_DIR = /mnt/c/Users/成見/0905_work/native/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/narumi/work/ot_estimators/native/build/CMakeFiles /home/narumi/work/ot_estimators/native/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles /mnt/c/Users/成見/0905_work/native/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/narumi/work/ot_estimators/native/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -129,6 +129,19 @@ ot_estimators/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators.dir/build.make CMakeFiles/ot_estimators.dir/build
 .PHONY : ot_estimators/fast
 
+#=============================================================================
+# Target rules for targets named ot_estimators_twotree
+
+# Build rule for target.
+ot_estimators_twotree: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ot_estimators_twotree
+.PHONY : ot_estimators_twotree
+
+# fast build rule for target.
+ot_estimators_twotree/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/build
+.PHONY : ot_estimators_twotree/fast
+
 src/ot_estimators.o: src/ot_estimators.cpp.o
 .PHONY : src/ot_estimators.o
 
@@ -153,6 +166,30 @@ src/ot_estimators.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators.dir/build.make CMakeFiles/ot_estimators.dir/src/ot_estimators.cpp.s
 .PHONY : src/ot_estimators.cpp.s
 
+src/ot_estimators_twotree.o: src/ot_estimators_twotree.cpp.o
+.PHONY : src/ot_estimators_twotree.o
+
+# target to build an object file
+src/ot_estimators_twotree.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/src/ot_estimators_twotree.cpp.o
+.PHONY : src/ot_estimators_twotree.cpp.o
+
+src/ot_estimators_twotree.i: src/ot_estimators_twotree.cpp.i
+.PHONY : src/ot_estimators_twotree.i
+
+# target to preprocess a source file
+src/ot_estimators_twotree.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/src/ot_estimators_twotree.cpp.i
+.PHONY : src/ot_estimators_twotree.cpp.i
+
+src/ot_estimators_twotree.s: src/ot_estimators_twotree.cpp.s
+.PHONY : src/ot_estimators_twotree.s
+
+# target to generate assembly for a file
+src/ot_estimators_twotree.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/src/ot_estimators_twotree.cpp.s
+.PHONY : src/ot_estimators_twotree.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,9 +199,13 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... ot_estimators"
+	@echo "... ot_estimators_twotree"
 	@echo "... src/ot_estimators.o"
 	@echo "... src/ot_estimators.i"
 	@echo "... src/ot_estimators.s"
+	@echo "... src/ot_estimators_twotree.o"
+	@echo "... src/ot_estimators_twotree.i"
+	@echo "... src/ot_estimators_twotree.s"
 .PHONY : help
 
 

@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -Dot_estimators_EXPORTS
 
-CXX_INCLUDES = -I/home/narumi/work/ot_estimators/native/external/eigen -I/home/narumi/work/ot_estimators/native/external/pybind11/include -I/usr/include/python3.10
+CXX_INCLUDES = -I/mnt/c/Users/成見/0905_work/native/external/eigen -I/mnt/c/Users/成見/0905_work/native/external/pybind11/include -I/usr/include/python3.10
 
 CXX_FLAGS = -fPIC -fvisibility=hidden -O3 -Wall -march=native -std=c++14 -flto -fno-fat-lto-objects
 

@@ -1,0 +1,65 @@
+=== doc_id=1 idx=0 seed=111 ===
+
+packedN=124 max_depth(H)=4
+#leaves=59  plus=33 minus=26  (sign_dump=YES)
+
+葉(左→右): name, id(packed), vocab_id, x, depth, sign, mass
+      v50  (id=  0)  vid=    50  x=   0  depth= 2  sign=+  mass=0.029412
+  v195829  (id= 72)  vid=195829  x=   1  depth= 4  sign=+  mass=0.029412
+     v278  (id= 79)  vid=   278  x=   2  depth= 2  sign=-  mass=0.038462
+   v19203  (id=112)  vid= 19203  x=   3  depth= 3  sign=-  mass=0.038462
+     v128  (id=  3)  vid=   128  x=   7  depth= 2  sign=+  mass=0.029412
+    v1563  (id= 23)  vid=  1563  x=   8  depth= 2  sign=+  mass=0.029412
+     v169  (id=  5)  vid=   169  x=  22  depth= 2  sign=-  mass=0.009050
+     v196  (id=  7)  vid=   196  x=  23  depth= 4  sign=+  mass=0.029412
+     v595  (id= 13)  vid=   595  x=  24  depth= 2  sign=+  mass=0.029412
+    v1275  (id= 19)  vid=  1275  x=  25  depth= 3  sign=+  mass=0.029412
+    v1813  (id= 24)  vid=  1813  x=  26  depth= 2  sign=+  mass=0.029412
+    v2511  (id= 32)  vid=  2511  x=  27  depth= 3  sign=+  mass=0.029412
+    v2926  (id= 39)  vid=  2926  x=  28  depth= 3  sign=+  mass=0.029412
+    v3165  (id= 44)  vid=  3165  x=  29  depth= 3  sign=+  mass=0.029412
+    v6267  (id= 46)  vid=  6267  x=  30  depth= 3  sign=+  mass=0.029412
+   v11987  (id= 56)  vid= 11987  x=  31  depth= 3  sign=+  mass=0.029412
+   v13710  (id= 60)  vid= 13710  x=  32  depth= 4  sign=+  mass=0.029412
+     v273  (id= 77)  vid=   273  x=  33  depth= 3  sign=-  mass=0.038462
+     v301  (id= 80)  vid=   301  x=  34  depth= 3  sign=-  mass=0.038462
+    v2381  (id= 94)  vid=  2381  x=  35  depth= 2  sign=-  mass=0.038462
+     v234  (id= 10)  vid=   234  x=  49  depth= 2  sign=+  mass=0.029412
+     v331  (id= 12)  vid=   331  x=  50  depth= 2  sign=+  mass=0.029412
+    v2047  (id= 28)  vid=  2047  x=  51  depth= 3  sign=+  mass=0.029412
+     v691  (id= 14)  vid=   691  x=  54  depth= 2  sign=+  mass=0.029412
+    v1239  (id= 16)  vid=  1239  x=  58  depth= 3  sign=+  mass=0.029412
+     v621  (id= 85)  vid=   621  x=  59  depth= 3  sign=-  mass=0.038462
+    v2424  (id= 95)  vid=  2424  x=  60  depth= 2  sign=-  mass=0.038462
+    v2804  (id= 99)  vid=  2804  x=  61  depth= 2  sign=-  mass=0.038462
+    v1510  (id= 21)  vid=  1510  x=  65  depth= 2  sign=+  mass=0.029412
+    v1930  (id= 25)  vid=  1930  x=  67  depth= 3  sign=+  mass=0.029412
+    v2800  (id= 98)  vid=  2800  x=  68  depth= 2  sign=-  mass=0.038462
+    v2379  (id= 30)  vid=  2379  x=  70  depth= 2  sign=+  mass=0.029412
+    v2654  (id= 34)  vid=  2654  x=  73  depth= 3  sign=+  mass=0.029412
+   v30627  (id= 66)  vid= 30627  x=  74  depth= 3  sign=+  mass=0.029412
+    v2590  (id= 96)  vid=  2590  x=  75  depth= 3  sign=-  mass=0.038462
+    v2755  (id= 37)  vid=  2755  x=  78  depth= 2  sign=+  mass=0.029412
+    v3164  (id= 41)  vid=  3164  x=  79  depth= 3  sign=+  mass=0.029412
+    v6524  (id= 48)  vid=  6524  x=  81  depth= 3  sign=+  mass=0.029412
+     v658  (id= 90)  vid=   658  x=  82  depth= 3  sign=-  mass=0.038462
+    v6827  (id= 51)  vid=  6827  x=  84  depth= 2  sign=+  mass=0.029412
+    v8392  (id= 53)  vid=  8392  x=  85  depth= 3  sign=+  mass=0.029412
+   v12268  (id= 58)  vid= 12268  x=  86  depth= 2  sign=+  mass=0.029412
+   v16035  (id= 63)  vid= 16035  x=  87  depth= 3  sign=+  mass=0.029412
+   v45109  (id= 68)  vid= 45109  x=  88  depth= 2  sign=+  mass=0.029412
+  v121999  (id= 70)  vid=121999  x=  89  depth= 2  sign=+  mass=0.029412
+     v214  (id= 75)  vid=   214  x=  90  depth= 2  sign=-  mass=0.038462
+     v440  (id= 82)  vid=   440  x=  93  depth= 3  sign=-  mass=0.038462
+   v13351  (id=108)  vid= 13351  x=  94  depth= 3  sign=-  mass=0.038462
+   v33198  (id=114)  vid= 33198  x=  95  depth= 3  sign=-  mass=0.038462
+     v647  (id= 87)  vid=   647  x=  98  depth= 3  sign=-  mass=0.038462
+    v1167  (id= 92)  vid=  1167  x=  99  depth= 2  sign=-  mass=0.038462
+    v6341  (id=100)  vid=  6341  x= 101  depth= 2  sign=-  mass=0.038462
+   v10576  (id=104)  vid= 10576  x= 102  depth= 3  sign=-  mass=0.038462
+    v9703  (id=102)  vid=  9703  x= 104  depth= 2  sign=-  mass=0.038462
+   v13338  (id=106)  vid= 13338  x= 105  depth= 2  sign=-  mass=0.038462
+   v13444  (id=110)  vid= 13444  x= 106  depth= 2  sign=-  mass=0.038462
+   v41395  (id=116)  vid= 41395  x= 107  depth= 2  sign=-  mass=0.038462
+   v45126  (id=118)  vid= 45126  x= 108  depth= 3  sign=-  mass=0.038462
+  v297001  (id=121)  vid=297001  x= 109  depth= 3  sign=-  mass=0.038462

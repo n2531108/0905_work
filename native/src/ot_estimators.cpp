@@ -14,6 +14,13 @@
 #include <utility>
 #include <vector>
 
+// [MOD] dump 用
+#include <fstream>
+#include <string>
+#include <cmath>
+
+#include <iostream>   // [MOD DEBUG]
+
 namespace py = pybind11;
 
 namespace ote {
@@ -30,6 +37,12 @@ inline int32_t sign(float x) {
   return -1;
 }
 
+// [MOD] 安全な符号（0 も返す）
+inline int32_t sign0(float x) {
+  if (fabs(x) < EPS) return 0;
+  return (x > 0) ? 1 : -1;
+}
+
 class OTEstimators {
  public:
   using NumPyFloatArray = py::array_t<float, py::array::c_style>;
@@ -42,7 +55,15 @@ class OTEstimators {
 
   OTEstimators() : stage(0) {}
 
-  void load_vocabulary(NumPyFloatArray points) {
+  // =========================
+  // [MOD] seed 指定対応
+  // =========================
+  //
+  // Python 側から:
+  //   ot.load_vocabulary(points, seed)
+  // として seed を渡せるようにする。
+  // seed < 0 なら従来どおり random_device。
+  void load_vocabulary(NumPyFloatArray points, int64_t seed = -1) {  // [MOD]
     if (stage != 0) {
       throw std::logic_error(
           "load_vocabulary() should be called once in the beginning");
@@ -56,6 +77,7 @@ class OTEstimators {
     auto n = buf.shape[0];
     auto d = buf.shape[1];
     dictionary = std::make_unique<Matrix>(static_cast<float *>(buf.ptr), n, d);
+
     auto cmin = std::numeric_limits<float>::max();
     auto cmax = std::numeric_limits<float>::min();
     for (ssize_t i = 0; i < n; ++i) {
@@ -66,26 +88,45 @@ class OTEstimators {
     }
     auto delta = cmax - cmin;
     cmin -= delta;
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
+
+    // [MOD] seed の扱い
+    uint64_t used_seed = 0;
+    std::mt19937_64 gen;
+    if (seed >= 0) {
+      used_seed = static_cast<uint64_t>(seed);
+      gen.seed(used_seed);
+    } else {
+      std::random_device rd;
+      used_seed = (static_cast<uint64_t>(rd()) << 32) ^ static_cast<uint64_t>(rd());
+      gen.seed(used_seed);
+    }
+    vocab_seed_used = used_seed;  // [MOD] 後で dump メタに書く
+
     std::uniform_real_distribution<float> shift_gen(0.0, delta);
     std::vector<std::pair<float, float>> bounding_box;
     for (ssize_t i = 0; i < d; ++i) {
       auto s = shift_gen(gen);
       bounding_box.push_back(std::make_pair(cmin + s, cmax + s));
     }
+
     std::vector<int32_t> all;
     for (ssize_t i = 0; i < n; ++i) {
       all.push_back(i);
     }
+
     leaf.resize(n);
     build_quadtree(all, bounding_box, 0, -1);
+
     num_queries = 0;
     marked.resize(parents.size());
     for (auto &x : marked) {
       x = -1;
     }
     node_id.resize(parents.size());
+
+    // [MOD] dump カウンタは load_vocabulary のタイミングでリセットしておく（任意）
+    dump_count = 0;
+    dump_truncated_once = false;
   }
 
   void load_dataset(
@@ -215,6 +256,40 @@ class OTEstimators {
     select_topk_aux(k1, output_ids, output_scores, to_sort);
   }
 
+  // =========================
+  // [MOD] packed subtree dump 設定
+  // =========================
+  //
+  // Python 側から:
+  //   ot.configure_flowtree_dump(path, limit=100, truncate=true)
+  //
+  // - path が空なら無効
+  // - limit は最大ダンプ回数（doc評価ごとに1回、flowtree_query内で消費）
+  void configure_flowtree_dump(const std::string &path, int32_t limit = 0,
+                               bool truncate = true) {  // [MOD]
+    dump_path = path;
+    dump_limit = std::max<int32_t>(0, limit);
+    dump_count = 0;
+
+    dump_truncate = truncate;
+    dump_truncated_once = false;
+
+    if (!dump_path.empty() && dump_limit > 0 && dump_truncate) {
+      // ここでは「初回のダンプ時に truncate」でもよいが、
+      // 設定時点で作っておく方が分かりやすいのでここでやる。
+      std::ofstream ofs(dump_path, std::ios::trunc);
+      if (!ofs) {
+        throw std::runtime_error("failed to open dump file (truncate): " + dump_path);
+      }
+      ofs << "#FLOWTREE_ADJ_DUMPS"
+          << " seed=" << (unsigned long long)vocab_seed_used
+          << " limit=" << dump_limit
+          << "\n";
+      ofs.close();
+      dump_truncated_once = true;
+    }
+  }
+
   void flowtree_rank(const std::vector<std::pair<int32_t, float>> &query,
                      NumPyIntArray input_ids, NumPyIntArray output_ids,
                      NumPyFloatArray output_scores, bool to_sort) {
@@ -226,7 +301,9 @@ class OTEstimators {
     int32_t k1 = input_ids_buf.shape[0];
     for (int32_t i = 0; i < k1; ++i) {
       auto cur_id = input_ids_raw[i];
-      auto score = flowtree_query(query, raw_dataset[cur_id]);
+
+      // [MOD] doc_id を flowtree_query に渡してメタに残せるように
+      auto score = flowtree_query(query, raw_dataset[cur_id], cur_id);
       distances[i] = std::make_pair(score, cur_id);
     }
     select_topk_aux(k1, output_ids, output_scores, to_sort);
@@ -248,6 +325,50 @@ class OTEstimators {
     select_topk_aux(k1, output_ids, output_scores, to_sort);
   }
 
+
+  // =========================
+  // [MOD] dataset を読まずに pair-distance 用の stage=2 に進める
+  //       residual の 1対1 FlowTree 距離専用
+  // =========================
+  void prepare_pair_mode() {
+    if (stage != 1) {
+      throw std::logic_error(
+          "prepare_pair_mode() should be called after load_vocabulary()");
+    }
+    stage = 2;
+
+    // [MOD] 念のため pair mode 用に最低限のサイズを確保
+    query_mean.resize(dictionary->cols());
+    distances.resize(1);
+  }
+
+    // =========================
+  // [MOD] Python から 1対1 の FlowTree 距離を直接呼ぶための関数
+  //       residual query / residual doc をそのまま渡す用途
+  // =========================
+  float flowtree_distance_pair(
+      const std::vector<std::pair<int32_t, float>> &a,
+      const std::vector<std::pair<int32_t, float>> &b) {
+    check_stage();
+
+    // [MOD] 各測度の基本チェック（sum=1 は見ない）
+    check_measure(a);
+    check_measure(b);
+
+    // [MOD] query/doc の総量一致だけは確認する
+    float sum_a = 0.0f;
+    float sum_b = 0.0f;
+    for (auto &x : a) sum_a += x.second;
+    for (auto &x : b) sum_b += x.second;
+
+    if (fabs(sum_a - sum_b) > EPS3) {
+      throw std::logic_error("query and doc masses are not balanced");
+    }
+
+    // [MOD] ranking ではなく 1ペアの距離をそのまま返す
+    return flowtree_query(a, b, -1);
+  }
+
  private:
   std::vector<int32_t> parents;
   std::vector<int32_t> leaf;
@@ -267,13 +388,22 @@ class OTEstimators {
   std::vector<std::pair<float, int32_t>> distances;
   int32_t stage;
 
+  // [MOD] seed / dump 状態
+  uint64_t vocab_seed_used = 0;
+
+  std::string dump_path;
+  int32_t dump_limit = 0;
+  int32_t dump_count = 0;
+  bool dump_truncate = true;
+  bool dump_truncated_once = false;
+
   void build_quadtree(const std::vector<int32_t> &subset,
                       const std::vector<std::pair<float, float>> &bounding_box,
                       int32_t depth, int32_t parent) {
-    int32_t node_id(parents.size());
+    int32_t node_id_local(parents.size());
     parents.push_back(parent);
     if (subset.size() == 1) {
-      leaf[subset[0]] = node_id;
+      leaf[subset[0]] = node_id_local;
       return;
     }
     int32_t d = dictionary->cols();
@@ -301,7 +431,7 @@ class OTEstimators {
           new_bounding_box[i] = std::make_pair(bounding_box[i].first, mid[i]);
         }
       }
-      build_quadtree(part.second, new_bounding_box, depth + 1, node_id);
+      build_quadtree(part.second, new_bounding_box, depth + 1, node_id_local);
     }
   }
 
@@ -334,16 +464,21 @@ class OTEstimators {
     return ans;
   }
 
+  // =========================
+  // [MOD] flowtree_query に doc_id を追加
+  // =========================
   float flowtree_query(const std::vector<std::pair<int32_t, float>> &a,
-                       const std::vector<std::pair<int32_t, float>> &b) {
-    int32_t num_nodes = 0;
+                       const std::vector<std::pair<int32_t, float>> &b,
+                       int32_t doc_id_for_dump = -1) {  // [MOD]
+    int32_t num_nodes_local = 0;
     id_node.clear();
+
     for (auto x : a) {
       auto id = leaf[x.first];
       while (id != -1) {
         if (marked[id] != num_queries) {
           id_node.push_back(id);
-          node_id[id] = num_nodes++;
+          node_id[id] = num_nodes_local++;
         }
         marked[id] = num_queries;
         id = parents[id];
@@ -354,41 +489,147 @@ class OTEstimators {
       while (id != -1) {
         if (marked[id] != num_queries) {
           id_node.push_back(id);
-          node_id[id] = num_nodes++;
+          node_id[id] = num_nodes_local++;
         }
         marked[id] = num_queries;
         id = parents[id];
       }
     }
-    if (static_cast<int32_t>(subtree.size()) < num_nodes) {
-      subtree.resize(num_nodes);
+
+    if (static_cast<int32_t>(subtree.size()) < num_nodes_local) {
+      subtree.resize(num_nodes_local);
     }
-    for (int32_t i = 0; i < num_nodes; ++i) {
+    for (int32_t i = 0; i < num_nodes_local; ++i) {
       subtree[i].clear();
     }
-    for (int32_t i = 0; i < num_nodes; ++i) {
+    for (int32_t i = 0; i < num_nodes_local; ++i) {
       int32_t u = parents[id_node[i]];
       if (u != -1) {
         subtree[node_id[u]].push_back(i);
       }
     }
-    if (static_cast<int32_t>(excess.size()) < num_nodes) {
-      excess.resize(num_nodes);
+
+    if (static_cast<int32_t>(excess.size()) < num_nodes_local) {
+      excess.resize(num_nodes_local);
     }
-    delta_node.assign(num_nodes, 0.0);
-    unleaf.resize(num_nodes);
+
+    delta_node.assign(num_nodes_local, 0.0f);
+    unleaf.assign(num_nodes_local, -1);  // [MOD] 未設定は -1
+
     for (auto x : a) {
-      delta_node[node_id[leaf[x.first]]] += x.second;
-      unleaf[node_id[leaf[x.first]]] = x.first;
+      int32_t nd = node_id[leaf[x.first]];
+      delta_node[nd] += x.second;
+      unleaf[nd] = x.first;
     }
     for (auto x : b) {
-      delta_node[node_id[leaf[x.first]]] -= x.second;
-      unleaf[node_id[leaf[x.first]]] = x.first;
+      int32_t nd = node_id[leaf[x.first]];
+      delta_node[nd] -= x.second;
+      unleaf[nd] = x.first;
     }
-    float res = run_query(0, node_id[0]);
-    if (!excess[node_id[0]].empty()) {
+
+    //int32_t root = node_id[0];
+
+        // [MOD] packed subtree 内の root を明示的に探す
+    int32_t root = -1;
+    for (int32_t i = 0; i < num_nodes_local; ++i) {
+      if (parents[id_node[i]] == -1) {
+        root = i;
+        break;
+      }
+    }
+    if (root == -1) {
+      throw std::logic_error("packed subtree root not found");
+    }
+
+        // [MOD DEBUG]
+        /*
+    std::cerr << "[MOD DEBUG] flowtree_query: num_nodes_local=" << num_nodes_local
+              << " root=" << root << std::endl;
+        */ 
+
+    // =========================
+    // [MOD] packed subtree dump（+/- も含めて）
+    // =========================
+    if (!dump_path.empty() && dump_limit > 0 && dump_count < dump_limit) {
+      // truncate 指定なのに、設定時点で truncate していない場合に備え保険
+      if (dump_truncate && !dump_truncated_once) {
+        std::ofstream ofs0(dump_path, std::ios::trunc);
+        if (!ofs0) {
+          throw std::runtime_error("failed to open dump file (truncate): " + dump_path);
+        }
+        ofs0 << "#FLOWTREE_ADJ_DUMPS"
+             << " seed=" << (unsigned long long)vocab_seed_used
+             << " limit=" << dump_limit
+             << "\n";
+        ofs0.close();
+        dump_truncated_once = true;
+      }
+
+      std::ofstream ofs(dump_path, std::ios::app);
+      if (!ofs) {
+        throw std::runtime_error("failed to open dump file (append): " + dump_path);
+      }
+
+      int64_t edge_count = 0;
+
+      ofs << "#BEGIN_DUMP"
+          << " idx=" << dump_count
+          << " doc_id=" << doc_id_for_dump
+          << " seed=" << (unsigned long long)vocab_seed_used
+          << "\n";
+
+      ofs << "#PACKED_NODES " << num_nodes_local << "\n";
+      ofs << "#ROOT " << root << "\n";
+
+      ofs << "#EDGE\n";
+      for (int32_t u = 0; u < num_nodes_local; ++u) {
+        for (int32_t v : subtree[u]) {
+          ofs << u << " " << v << "\n";
+          edge_count++;
+        }
+      }
+
+      ofs << "#ISLEAF";
+      for (int32_t u = 0; u < num_nodes_local; ++u) {
+        ofs << " " << (subtree[u].empty() ? 1 : 0);
+      }
+      ofs << "\n";
+
+      ofs << "#UNLEAF";
+      for (int32_t u = 0; u < num_nodes_local; ++u) {
+        if (subtree[u].empty()) ofs << " " << unleaf[u];
+        else ofs << " " << -1;
+      }
+      ofs << "\n";
+
+      // delta（質量の + / -）: 1D NN で符号分割するために重要
+      ofs << "#DELTA";
+      for (int32_t u = 0; u < num_nodes_local; ++u) {
+        ofs << " " << delta_node[u];
+      }
+      ofs << "\n";
+
+      // 0, +1, -1 の符号（葉以外は基本0だが書いてよい）
+      ofs << "#SIGN";
+      for (int32_t u = 0; u < num_nodes_local; ++u) {
+        ofs << " " << sign0(delta_node[u]);
+      }
+      ofs << "\n";
+
+      ofs << "#END_DUMP"
+          << " idx=" << dump_count
+          << " edge_count=" << edge_count
+          << "\n";
+      ofs.close();
+
+      dump_count++;
+    }
+
+    float res = run_query(0, root);
+
+    if (!excess[root].empty()) {
       float unassigned = 0.0;
-      for (auto x : excess[node_id[0]]) {
+      for (auto x : excess[root]) {
         unassigned += x.first;
       }
       if (unassigned > EPS2) {
@@ -400,7 +641,13 @@ class OTEstimators {
   }
 
   float run_query(int32_t depth, int32_t nd) {
+
+        // [MOD DEBUG]
+        /*
+    std::cerr << "[MOD DEBUG] run_query: depth=" << depth << " nd=" << nd << std::endl;
+    */
     float res = 0.0;
+    
     for (auto x : subtree[nd]) {
       res += run_query(depth + 1, x);
     }
@@ -472,8 +719,18 @@ class OTEstimators {
     }
   }
 
+    // [MOD] stage確認（元コードにあったものを復元）
+  void check_stage() {
+    if (stage != 2) {
+      throw std::logic_error(
+          "need to call load_vocabulary() and load_dataset() first");
+    }
+  }
+
+  // [MOD] sum=1 の強制を外した版
+  //       テスト目的: index有効性 / 非負のみ確認する
   void check_measure(const std::vector<std::pair<int32_t, float>> &measure) {
-    float sum = 0.0;
+    float sum = 0.0f;
     auto n = dictionary->rows();
     for (auto &atom : measure) {
       if (atom.first < 0 || atom.first >= n) {
@@ -484,16 +741,16 @@ class OTEstimators {
       }
       sum += atom.second;
     }
-    if (fabs(sum - 1.0) > EPS3) {
-      throw std::logic_error("the masses don't sum to 1");
-    }
-  }
 
-  void check_stage() {
-    if (stage != 2) {
-      throw std::logic_error(
-          "need to call load_vocabulary() and load_dataset() first");
+    // [MOD] 総和が0以下はさすがに不正として弾く
+    if (sum <= EPS) {
+      throw std::logic_error("measure has too little total mass");
     }
+
+    // [MOD] 以前あった sum==1 チェックはテストのため外す
+    // if (fabs(sum - 1.0) > EPS3) {
+    //   throw std::logic_error("the masses don't sum to 1");
+    // }
   }
 
   template <typename T>
@@ -548,17 +805,33 @@ class OTEstimators {
     }
   }
 };
+
 }  // namespace ote
 
 PYBIND11_MODULE(ot_estimators, m) {
   using ote::OTEstimators;
   py::class_<OTEstimators>(m, "OTEstimators")
       .def(py::init<>())
-      .def("load_vocabulary", &OTEstimators::load_vocabulary)
+
+      // [MOD] load_vocabulary に seed 引数追加（default=-1）
+      .def("load_vocabulary", &OTEstimators::load_vocabulary,
+           py::arg("points"), py::arg("seed") = -1)
+
       .def("load_dataset", &OTEstimators::load_dataset)
       .def("means_rank", &OTEstimators::means_rank)
       .def("overlap_rank", &OTEstimators::overlap_rank)
       .def("quadtree_rank", &OTEstimators::quadtree_rank)
       .def("flowtree_rank", &OTEstimators::flowtree_rank)
-      .def("select_topk", &OTEstimators::select_topk);
+
+      // [MOD] residual query / residual doc の 1対1 FlowTree 距離
+      .def("flowtree_distance_pair", &OTEstimators::flowtree_distance_pair)
+
+      .def("select_topk", &OTEstimators::select_topk)
+
+      // [MOD] dataset を読まずに pair-distance 用の stage=2 に進める
+      .def("prepare_pair_mode", &OTEstimators::prepare_pair_mode)
+
+      // [MOD] dump 設定 API を追加
+      .def("configure_flowtree_dump", &OTEstimators::configure_flowtree_dump,
+           py::arg("path"), py::arg("limit") = 0, py::arg("truncate") = true);
 }

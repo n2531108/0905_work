@@ -54,16 +54,17 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/narumi/work/ot_estimators/native
+CMAKE_SOURCE_DIR = /mnt/c/Users/成見/0905_work/native
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/narumi/work/ot_estimators/native/build
+CMAKE_BINARY_DIR = /mnt/c/Users/成見/0905_work/native/build
 
 #=============================================================================
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
 all: CMakeFiles/ot_estimators.dir/all
+all: CMakeFiles/ot_estimators_twotree.dir/all
 all: external/pybind11/all
 .PHONY : all
 
@@ -73,6 +74,7 @@ preinstall: external/pybind11/preinstall
 
 # The main recursive "clean" target.
 clean: CMakeFiles/ot_estimators.dir/clean
+clean: CMakeFiles/ot_estimators_twotree.dir/clean
 clean: external/pybind11/clean
 .PHONY : clean
 
@@ -98,14 +100,14 @@ external/pybind11/clean:
 CMakeFiles/ot_estimators.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators.dir/build.make CMakeFiles/ot_estimators.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators.dir/build.make CMakeFiles/ot_estimators.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/narumi/work/ot_estimators/native/build/CMakeFiles --progress-num=1,2 "Built target ot_estimators"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/mnt/c/Users/成見/0905_work/native/build/CMakeFiles --progress-num=1,2 "Built target ot_estimators"
 .PHONY : CMakeFiles/ot_estimators.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/ot_estimators.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/narumi/work/ot_estimators/native/build/CMakeFiles 2
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles 2
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ot_estimators.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/narumi/work/ot_estimators/native/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles 0
 .PHONY : CMakeFiles/ot_estimators.dir/rule
 
 # Convenience name for target.
@@ -116,6 +118,32 @@ ot_estimators: CMakeFiles/ot_estimators.dir/rule
 CMakeFiles/ot_estimators.dir/clean:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators.dir/build.make CMakeFiles/ot_estimators.dir/clean
 .PHONY : CMakeFiles/ot_estimators.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/ot_estimators_twotree.dir
+
+# All Build rule for target.
+CMakeFiles/ot_estimators_twotree.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/mnt/c/Users/成見/0905_work/native/build/CMakeFiles --progress-num=3,4 "Built target ot_estimators_twotree"
+.PHONY : CMakeFiles/ot_estimators_twotree.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/ot_estimators_twotree.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles 2
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/ot_estimators_twotree.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/成見/0905_work/native/build/CMakeFiles 0
+.PHONY : CMakeFiles/ot_estimators_twotree.dir/rule
+
+# Convenience name for target.
+ot_estimators_twotree: CMakeFiles/ot_estimators_twotree.dir/rule
+.PHONY : ot_estimators_twotree
+
+# clean rule for target.
+CMakeFiles/ot_estimators_twotree.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/ot_estimators_twotree.dir/build.make CMakeFiles/ot_estimators_twotree.dir/clean
+.PHONY : CMakeFiles/ot_estimators_twotree.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

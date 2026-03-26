@@ -1,4 +1,4 @@
-# Install script for directory: /home/narumi/work/ot_estimators/native/external/pybind11
+# Install script for directory: /mnt/c/Users/成見/0905_work/native/external/pybind11
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
