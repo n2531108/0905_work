@@ -66,6 +66,7 @@ import os
 import sys
 from collections import deque
 from dataclasses import dataclass
+from time import time
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -909,6 +910,8 @@ def print_cost_block(seed_label: str, seed_value: int, baseline: float, prem_cos
 # ============================================================
 
 def main() -> None:
+    import time
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", required=True, help="directory containing vocab.npy / dataset.npy / queries.npy")
     ap.add_argument("--so_dir", required=True, help="directory containing ot_estimators_twotree*.so")
@@ -923,10 +926,10 @@ def main() -> None:
     ap.add_argument("--limit_rows", type=int, default=200, help="row limit for printed tables")
     args = ap.parse_args()
 
-    #データのロード
+    # データのロード
     vocab, dataset, queries = load_all_inputs(args.data_dir)
 
-    #query と doc　を選ぶ
+    # query と doc を選ぶ
     if args.qid < 0 or args.qid >= len(queries):
         raise RuntimeError(f"qid out of range: {args.qid} (queries={len(queries)})")
     if args.doc_id < 0 or args.doc_id >= len(dataset):
@@ -935,7 +938,7 @@ def main() -> None:
     query = queries[args.qid]
     doc = dataset[args.doc_id]
 
-    #二本の木を作る
+    # 二本の木を作る（前処理なので timing の外）
     otA, otB, seed_api_ok = build_two_ots(
         so_dir=args.so_dir,
         vocab=vocab,
@@ -943,7 +946,11 @@ def main() -> None:
         seedB=args.seedB,
     )
 
-    #木Aと木Bの処理
+    # --------------------------------------------------
+    # 1. 候補生成（run_single_tree 2本分）
+    # --------------------------------------------------
+    t0 = time.perf_counter()
+
     resA = run_single_tree(
         ot=otA,
         query=query,
@@ -959,22 +966,38 @@ def main() -> None:
         tie_break=args.tie,
     )
 
-    #A/Bの候補を比較
+    t_candidate = time.perf_counter() - t0
+
+    # --------------------------------------------------
+    # 2. A/B の候補比較
+    # --------------------------------------------------
+    t0 = time.perf_counter()
+
     rows, compare_summary = build_compare_rows(resA.nn_scan, resB.nn_scan, vocab, priority="A")
+
+    t_compare = time.perf_counter() - t0
+
     print_summary(resA, resB, compare_summary, args.doc_id, args.qid)
 
     if args.show_compare:
         print_compare_table(rows, limit=args.limit_rows)
 
-    #元のquery/doc の delta mass を作る
+    # --------------------------------------------------
+    # 3. プレマッチ
+    # --------------------------------------------------
+    t0 = time.perf_counter()
+
+    # 元の query/doc の delta mass を作る
     plus0, minus0, _ = build_delta_masses(query, doc)
     delta_total = float(sum(plus0.values()))
 
-    #プレマッチとそのコスト計算
+    # プレマッチとそのコスト計算
     match_edges, rem_plus, rem_minus, greedy_stats = greedy_prematch_delta_mass(rows, plus0, minus0)
     prem_cost = prematch_cost_from_edges(match_edges)
     residual_mass = float(greedy_stats["sum_rem_plus"])
     prematched_flow = float(greedy_stats["total_flow_sent"])
+
+    t_prematch = time.perf_counter() - t0
 
     if args.show_match:
         print_greedy_rows(match_edges, show_top=args.limit_rows)
@@ -987,36 +1010,84 @@ def main() -> None:
         nz_minus=int(greedy_stats["nonzero_rem_minus"]),
     )
 
-    print()
-    print("DEBUG file =", __file__)
-    print("DEBUG qid/doc_id =", args.qid, args.doc_id)
-    print("DEBUG seedA/seedB =", args.seedA, args.seedB)
-    print("DEBUG baselineA_direct =", float(otA.flowtree_distance_pair(query, doc)))
-    print("DEBUG baselineB_direct =", float(otB.flowtree_distance_pair(query, doc)))
-    print("DEBUG prem_cost =", prem_cost)
-    print("DEBUG rem_plus_sum =", sum(rem_plus.values()))
-    print("DEBUG rem_minus_sum =", sum(rem_minus.values()))
+    # baseline 用にも query/doc を dict にしておく
+    query_mass = measure_to_dict(query)
+    doc_mass = measure_to_dict(doc)
 
-    print("DEBUG A1 =", float(otA.flowtree_distance_pair(query, doc)))
-    print("DEBUG A2 =", float(otA.flowtree_distance_pair(query, doc)))
-    print("DEBUG A3 =", float(otA.flowtree_distance_pair(query, doc)))
+    # --------------------------------------------------
+    # 4. 残差 / baseline FlowTree 評価
+    #    時間は複数回平均で測る
+    # --------------------------------------------------
+    warmup = 5
+    repeat_eval = 100
 
-    print("DEBUG B1 =", float(otB.flowtree_distance_pair(query, doc)))
-    print("DEBUG B2 =", float(otB.flowtree_distance_pair(query, doc)))
-    print("DEBUG B3 =", float(otB.flowtree_distance_pair(query, doc)))
-    print()
+    flowtree_cost_pair(otA, rem_plus, rem_minus)
+    flowtree_cost_pair(otB, rem_plus, rem_minus)
+    flowtree_cost_pair(otA, query_mass, doc_mass)
+    flowtree_cost_pair(otB, query_mass, doc_mass)
 
-    baselineA = float(otA.flowtree_distance_pair(query, doc))
+    # 値そのものは1回だけ取得
     residualA = flowtree_cost_pair(otA, rem_plus, rem_minus)
-    print_cost_block("A", args.seedA, baselineA, prem_cost, residualA)
-    baselineB = float(otB.flowtree_distance_pair(query, doc))
     residualB = flowtree_cost_pair(otB, rem_plus, rem_minus)
+    baselineA = flowtree_cost_pair(otA, query_mass, doc_mass)
+    baselineB = flowtree_cost_pair(otB, query_mass, doc_mass)
+
+    """"
+    # warm-up
+    for _ in range(warmup):
+        _ = flowtree_cost_pair(otA, rem_plus, rem_minus)
+        _ = flowtree_cost_pair(otB, rem_plus, rem_minus)
+        _ = flowtree_cost_pair(otA, query_mass, doc_mass)
+        _ = flowtree_cost_pair(otB, query_mass, doc_mass)
+    """
+
+    # residual A
+    t0 = time.perf_counter()
+    flowtree_cost_pair(otA, rem_plus, rem_minus)
+    t_residual_A = (time.perf_counter() - t0) 
+
+    # residual B
+    t0 = time.perf_counter()
+    flowtree_cost_pair(otB, rem_plus, rem_minus)
+    t_residual_B = (time.perf_counter() - t0) 
+
+    # baseline A
+    t0 = time.perf_counter()
+    flowtree_cost_pair(otA, query_mass, doc_mass)
+    t_baseline_A = (time.perf_counter() - t0) 
+
+    # baseline B
+    t0 = time.perf_counter()
+    flowtree_cost_pair(otB, query_mass, doc_mass)
+    t_baseline_B = (time.perf_counter() - t0) 
+
+
+    t_residual_eval = t_residual_A + t_residual_B
+    t_baseline_only = t_baseline_A + t_baseline_B
+    t_prematch_total = t_candidate + t_compare + t_prematch + t_residual_eval
+
+    print_cost_block("A", args.seedA, baselineA, prem_cost, residualA)
     print_cost_block("B", args.seedB, baselineB, prem_cost, residualB)
 
     if not seed_api_ok:
         print("[note] C++ 側の load_vocabulary は seed 引数を受け取っていません。")
         print("[note] 今回は seedA == seedB 前提で同一木として実行されています。")
         print()
+
+    print("[timing]")
+    print(f"  t_candidate      = {t_candidate:.6f}")
+    print(f"  t_compare        = {t_compare:.6f}")
+    print(f"  t_prematch       = {t_prematch:.6f}")
+    print(f"  t_residual_A     = {t_residual_A:.6f}")
+    print(f"  t_residual_B     = {t_residual_B:.6f}")
+    print(f"  t_residual_eval  = {t_residual_eval:.6f}")
+    print(f"  t_baseline_A     = {t_baseline_A:.6f}")
+    print(f"  t_baseline_B     = {t_baseline_B:.6f}")
+    print(f"  t_baseline_only  = {t_baseline_only:.6f}")
+    print(f"  t_prematch_total = {t_prematch_total:.6f}")
+    if t_baseline_only > 0.0:
+        print(f"  ratio(total/baseline)    = {t_prematch_total / t_baseline_only:.6f}")
+        print(f"  ratio(residual/baseline) = {t_residual_eval / t_baseline_only:.6f}")
 
 
 if __name__ == "__main__":
